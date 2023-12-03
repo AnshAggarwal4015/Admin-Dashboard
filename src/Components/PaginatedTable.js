@@ -14,6 +14,7 @@ const PaginatedTable = () => {
   const [isDeleteMultipleModalVisible, setIsDeleteMultipleModalVisible] =
     useState(false);
   const [selectedPerson, setSelectedPerson] = useState(null);
+  const [selectAllChecked, setSelectAllChecked] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -38,7 +39,7 @@ const PaginatedTable = () => {
           indeterminate={
             selectedRows.length > 0 && selectedRows.length < dataSource.length
           }
-          checked={selectedRows.length === dataSource.length}
+          checked={selectAllChecked}
           onChange={handleSelectAllChange}
         />
       ),
@@ -92,17 +93,18 @@ const PaginatedTable = () => {
         ? [...prevSelectedRows, id]
         : prevSelectedRows.filter((rowId) => rowId !== id)
     );
+    setSelectAllChecked(false); // Uncheck "Select All" when individual checkboxes are clicked
   };
 
   const handleSelectAllChange = (e) => {
     const checked = e.target.checked;
-    console.log(checked)
     // Get the IDs of the rows on the current page
     const currentPageIds = dataSource
       .slice(startIndex, endIndex)
       .map((row) => row.id);
 
     setSelectedRows(checked ? currentPageIds : []);
+    setSelectAllChecked(checked);
   };
 
   const handleEdit = (record) => {
