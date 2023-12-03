@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Table, Pagination, Checkbox, Space, Button, Modal } from "antd";
 import axios from "axios";
 import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
+import EditModal from "./EditModal";
 
 const PaginatedTable = () => {
   const [currentPage, setCurrentPage] = useState(1);
@@ -30,7 +31,7 @@ const PaginatedTable = () => {
     };
 
     fetchData();
-  }, []); // Run once on component mount
+  }, []);
 
   const columns = [
     {
@@ -93,12 +94,11 @@ const PaginatedTable = () => {
         ? [...prevSelectedRows, id]
         : prevSelectedRows.filter((rowId) => rowId !== id)
     );
-    setSelectAllChecked(false); // Uncheck "Select All" when individual checkboxes are clicked
+    setSelectAllChecked(false);
   };
 
   const handleSelectAllChange = (e) => {
     const checked = e.target.checked;
-    // Get the IDs of the rows on the current page
     const currentPageIds = dataSource
       .slice(startIndex, endIndex)
       .map((row) => row.id);
@@ -108,24 +108,17 @@ const PaginatedTable = () => {
   };
 
   const handleEdit = (record) => {
-    // Set details of the selected person
     setSelectedPerson(record);
-    // Show edit modal
     setIsEditModalVisible(true);
   };
 
   const handleDelete = () => {
     if (selectedRows.length === 1) {
-      // If only one row is selected, get the details of that row
       const selectedRow = dataSource.find((row) => row.id === selectedRows[0]);
-
-      // Set details of the selected person
       setSelectedPerson(selectedRow);
 
-      // Show delete confirmation modal for the single row
       setIsDeleteSingleModalVisible(true);
     } else if (selectedRows.length > 1) {
-      // If multiple rows are selected, show a generic confirmation modal
       setIsDeleteMultipleModalVisible(true);
     }
   };
@@ -137,49 +130,50 @@ const PaginatedTable = () => {
     onChange: handlePageChange,
   };
 
-  const handleDeleteSingleModalOk = () => {
-    // Update dataSource by filtering out the selected row
+  const updatePerson = (personId, updatedValues) => {
     setDataSource((prevDataSource) =>
-      prevDataSource.filter((row) => row.id !== selectedPerson.id)
+      prevDataSource.map((person) =>
+        person.id === personId ? { ...person, ...updatedValues } : person
+      )
     );
-
-    // Close delete confirmation modal for the single row
-    setIsDeleteSingleModalVisible(false);
-
-    // Clear selectedRows after deletion
-    setSelectedRows([]);
   };
 
-  const handleDeleteSingleModalCancel = () => {
-    // Close delete confirmation modal for the single row
-    setIsDeleteSingleModalVisible(false);
-
-    // Clear selectedRows on cancel
-    setSelectedRows([]);
+  const handleModal = (isMultiple, action) => {
+    if (isMultiple) {
+      switch (action) {
+        case "cancel":
+          setIsDeleteMultipleModalVisible(false);
+          setSelectedRows([]);
+          break;
+        case "ok":
+          setDataSource((prevDataSource) =>
+            prevDataSource.filter((row) => !selectedRows.includes(row.id))
+          );
+          setIsDeleteMultipleModalVisible(false);
+          setSelectedRows([]);
+          break;
+        default:
+          console.log("Something went wrong");
+      }
+    } else {
+      switch (action) {
+        case "cancel":
+          setIsDeleteSingleModalVisible(false);
+          setSelectedRows([]);
+          break;
+        case "ok":
+          setDataSource((prevDataSource) =>
+            prevDataSource.filter((row) => row.id !== selectedPerson.id)
+          );
+          setIsDeleteSingleModalVisible(false);
+          setSelectedRows([]);
+          break;
+        default:
+          console.log("Something went wrong");
+      }
+    }
   };
 
-  const handleDeleteMultipleModalOk = () => {
-    // Update dataSource by filtering out the selected rows
-    setDataSource((prevDataSource) =>
-      prevDataSource.filter((row) => !selectedRows.includes(row.id))
-    );
-
-    // Close delete confirmation modal for multiple rows
-    setIsDeleteMultipleModalVisible(false);
-
-    // Clear selectedRows after deletion
-    setSelectedRows([]);
-  };
-
-  const handleDeleteMultipleModalCancel = () => {
-    // Close delete confirmation modal for multiple rows
-    setIsDeleteMultipleModalVisible(false);
-
-    // Clear selectedRows on cancel
-    setSelectedRows([]);
-  };
-
-  // Calculate start and end indices for the current page
   const startIndex = (currentPage - 1) * 10;
   const endIndex = currentPage * 10;
 
@@ -195,12 +189,24 @@ const PaginatedTable = () => {
       >
         <Pagination {...paginationConfig} />
       </div>
+
+      <EditModal
+        isModalVisible={isEditModalVisible}
+        handleCancel={() => setIsEditModalVisible(false)}
+        selectedPerson={selectedPerson}
+        updatePerson={updatePerson}
+      />
+
       {selectedRows && selectedRows.length > 0 && (
         <Modal
           title="Delete Confirmation"
           visible={isDeleteMultipleModalVisible}
-          onCancel={handleDeleteMultipleModalCancel}
-          onOk={handleDeleteMultipleModalOk}
+          onCancel={() => {
+            handleModal(true, "cancel");
+          }}
+          onOk={() => {
+            handleModal(true, "ok");
+          }}
         >
           <p>Are you sure you want to delete the selected row(s)?</p>
         </Modal>
@@ -208,8 +214,12 @@ const PaginatedTable = () => {
       <Modal
         title="Delete Confirmation"
         visible={isDeleteSingleModalVisible}
-        onCancel={handleDeleteSingleModalCancel}
-        onOk={handleDeleteSingleModalOk}
+        onCancel={() => {
+          handleModal(false, "cancel");
+        }}
+        onOk={() => {
+          handleModal(false, "ok");
+        }}
       >
         {selectedPerson && (
           <p>
