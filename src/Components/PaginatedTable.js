@@ -3,10 +3,12 @@ import { Table, Pagination, Checkbox, Space, Button, Modal } from "antd";
 import axios from "axios";
 import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import EditModal from "./EditModal";
+import SearchBar from "./SearchBar";
 
 const PaginatedTable = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [dataSource, setDataSource] = useState([]);
+  const [copyDataSource, setCopyDataSource] = useState([]);
   const [totalItems, setTotalItems] = useState(0);
   const [selectedRows, setSelectedRows] = useState([]);
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
@@ -16,6 +18,7 @@ const PaginatedTable = () => {
     useState(false);
   const [selectedPerson, setSelectedPerson] = useState(null);
   const [selectAllChecked, setSelectAllChecked] = useState(false);
+  const [searchText, setSearchText] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -23,6 +26,7 @@ const PaginatedTable = () => {
         const response = await axios.get(
           "https://geektrust.s3-ap-southeast-1.amazonaws.com/adminui-problem/members.json"
         );
+        setCopyDataSource(response.data);
         setDataSource(response.data);
         setTotalItems(response.data.length);
       } catch (error) {
@@ -174,15 +178,53 @@ const PaginatedTable = () => {
     }
   };
 
+  const handleSearch = (e) => {
+    const word = e.target.value;
+    setSearchText(word);
+    if (word === "") return setDataSource(copyDataSource);
+    const tempArr = [...copyDataSource];
+
+    setDataSource(
+      tempArr.filter((data) => {
+        const regex = new RegExp(word, "gi");
+
+        return (
+          data.name.match(regex) ||
+          data.email.match(regex) ||
+          data.role.match(regex)
+        );
+      })
+    );
+  };
+  const handleBulkDelete = () => {
+    setIsDeleteMultipleModalVisible(true);
+  };
+
   const startIndex = (currentPage - 1) * 10;
   const endIndex = currentPage * 10;
 
   return (
-    <div>
+    <div className="flex flex-col items-center space-y-4">
+      <div className="mt-10 flex flex-row w-[100%] justify-around">
+        <SearchBar
+          searchText={searchText}
+          handleSearch={handleSearch}
+          className="w-full"
+        />
+        <Button
+          icon={<DeleteOutlined />}
+          onClick={handleBulkDelete}
+          disabled={selectedRows.length === 0}
+          className="bg-red-500 text-white"
+        >
+          Bulk Delete
+        </Button>
+      </div>
       <Table
         dataSource={dataSource.slice(startIndex, endIndex)}
         columns={columns}
         pagination={false}
+        className="w-11/12"
       />
       <div
         style={{ display: "flex", justifyContent: "center", marginTop: "16px" }}
